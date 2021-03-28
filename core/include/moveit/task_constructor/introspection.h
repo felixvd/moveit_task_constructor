@@ -92,7 +92,7 @@ public:
 	void publishSolution(const SolutionBase& s);
 
 	/// publish all top-level solutions of task
-	void publishAllSolutions(bool wait = true);
+	void publishAllSolutions(const bool& wait = true);
 
 	/// get solution
 	bool getSolution(moveit_task_constructor_msgs::GetSolution::Request& req,

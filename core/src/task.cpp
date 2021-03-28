@@ -327,7 +327,7 @@ moveit_msgs::MoveItErrorCodes Task::execute(const SolutionBase& s) {
 	return ac.getResult()->error_code;
 }
 
-void Task::publishAllSolutions(bool wait) {
+void Task::publishAllSolutions(const bool& wait) {
 	enableIntrospection(true);
 	pimpl()->introspection_->publishAllSolutions(wait);
 }

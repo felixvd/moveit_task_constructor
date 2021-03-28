@@ -158,7 +158,7 @@ void Introspection::publishSolution(const SolutionBase& s) {
 	impl->solution_publisher_.publish(msg);
 }
 
-void Introspection::publishAllSolutions(bool wait) {
+void Introspection::publishAllSolutions(const bool& wait) {
 	for (const auto& solution : impl->task_->stages()->solutions()) {
 		publishSolution(*solution);
 

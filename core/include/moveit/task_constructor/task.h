@@ -136,7 +136,7 @@ public:
 	const std::list<SolutionBaseConstPtr>& failures() const { return stages()->failures(); }
 
 	/// publish all top-level solutions
-	void publishAllSolutions(bool wait = true);
+	void publishAllSolutions(const bool& wait = true);
 
 	// +1 TODO: convenient access to arbitrary stage by name. traverse hierarchy using / separator?
 	/// access stage tree
