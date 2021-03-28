@@ -129,6 +129,7 @@ public:
 
 	bool plan();
   void getSolutionMsg(moveit_task_constructor_msgs::Solution& solution);
+  void publishAllSolutions(const bool& wait);
 
 private:
 	moveit::task_constructor::TaskPtr task_;

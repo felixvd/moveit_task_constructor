@@ -86,6 +86,7 @@ void PlanPickPlaceCapability::goalCallback(
   // Compute plan
   result.success = pick_place_task_->plan();
   if (result.success) {
+    pick_place_task_->publishAllSolutions(false);
     pick_place_task_->getSolutionMsg(result.solution);
   }
 

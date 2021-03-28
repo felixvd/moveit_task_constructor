@@ -238,6 +238,10 @@ void PickPlaceTask::getSolutionMsg(moveit_task_constructor_msgs::Solution& solut
   task_->solutions().front()->fillMessage(solution);
 }
 
+void PickPlaceTask::publishAllSolutions(const bool& wait) {
+  task_->publishAllSolutions(wait);
+}
+
 }  // namespace tasks
 }  // namespace task_constructor
 }  // namespace moveit
