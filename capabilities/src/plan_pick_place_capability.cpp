@@ -60,6 +60,7 @@ void PlanPickPlaceCapability::goalCallback(
 
   // TODO: fill parameters
   PickPlaceTask::Parameters parameters;
+  parameters.task_type_ = goal->task_type;
   parameters.arm_group_name_ = goal->arm_group_name;
   parameters.hand_group_name_ = goal->hand_group_name;
   parameters.eef_name_ = goal->eef_name;

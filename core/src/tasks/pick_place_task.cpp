@@ -87,10 +87,23 @@ void PickPlaceTask::init(const Parameters& parameters)
         std::make_unique<stages::PredicateFilter>("applicability test", std::move(_current_state));
     applicability_filter->setPredicate([&](const SolutionBase& s, std::string& comment) {
       s.start()->scene()->printKnownObjects(std::cout);
-      if (s.start()->scene()->getCurrentState().hasAttachedBody(parameters.object_name_))
+    
+      if (parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PICK_ONLY || 
+          parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PICK_AND_PLACE)
       {
-        comment = "object with id '" + parameters.object_name_ + "' is already attached and cannot be picked";
-        return false;
+        if (s.start()->scene()->getCurrentState().hasAttachedBody(parameters.object_name_))
+        {
+          comment = "object with id '" + parameters.object_name_ + "' is already attached and cannot be picked";
+          return false;
+        }
+      }
+      else if (parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PLACE_ONLY)
+      {
+        if (!s.start()->scene()->getCurrentState().hasAttachedBody(parameters.object_name_))
+        {
+          comment = "object with id '" + parameters.object_name_ + "' is not attached, so it cannot be placed";
+          return false;
+        }
       }
       return true;
     });
@@ -99,86 +112,111 @@ void PickPlaceTask::init(const Parameters& parameters)
     t.add(std::move(applicability_filter));
   }
 
-  /****************************************************
-   *                                                  *
-   *               Open Hand                          *
-   *                                                  *
-   ***************************************************/
-  {  // Open Hand
-    auto stage = std::make_unique<stages::MoveTo>("open hand", sampling_planner);
-    stage->setGroup(parameters.hand_group_name_);
-    stage->setGoal(parameters.hand_open_pose_);
-    t.add(std::move(stage));
-  }
-
-  /****************************************************
-   *                                                  *
-   *               Move to Pick                       *
-   *                                                  *
-   ***************************************************/
-  {  // Move-to pre-grasp
-    auto stage = std::make_unique<stages::Connect>(
-        "move to pick", stages::Connect::GroupPlannerVector{ { parameters.arm_group_name_, sampling_planner } });
-    stage->setTimeout(5.0);
-    stage->properties().configureInitFrom(Stage::PARENT);
-    t.add(std::move(stage));
-  }
-
-  /****************************************************
-   *                                                  *
-   *               Pick Object                        *
-   *                                                  *
-   ***************************************************/
-  Stage* attach_object_stage = nullptr;  // Forward attach_object_stage to place pose generator
+  if (parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PICK_ONLY || 
+      parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PICK_AND_PLACE)
   {
-    auto stage = std::make_unique<stages::Pick>("Pick object", parameters.grasp_provider_plugin_name_);
-    stage->properties().property("eef_group").configureInitFrom(Stage::PARENT, "hand");
-    stage->properties().property("eef_parent_group").configureInitFrom(Stage::PARENT, "group");
-    stage->setObject(parameters.object_name_);
-    stage->setEndEffector(parameters.eef_name_);
-    stage->setEndEffectorOpenClose(parameters.hand_open_pose_, parameters.hand_close_pose_);
-    stage->setSupportSurfaces(parameters.support_surfaces_);
-    stage->setIKFrame(parameters.grasp_frame_transform_, parameters.hand_frame_);
-    stage->GraspProviderPlugin()->properties().set("angle_delta", M_PI / 12);  // Set plugin-specific properties
-    stage->setMonitoredStage(current_state);
-    stage->setApproachMotion(parameters.approach_object_direction_,parameters.approach_object_min_dist_, parameters.approach_object_max_dist_);
-    stage->setLiftMotion(parameters.lift_object_direction_, parameters.lift_object_min_dist_, parameters.lift_object_max_dist_);
-    attach_object_stage = stage->attachStage();
-    t.add(std::move(stage));
+    /****************************************************
+     *                                                  *
+     *               Open Hand                          *
+     *                                                  *
+     ***************************************************/
+    {  // Open Hand
+      auto stage = std::make_unique<stages::MoveTo>("open hand", sampling_planner);
+      stage->setGroup(parameters.hand_group_name_);
+      stage->setGoal(parameters.hand_open_pose_);
+      t.add(std::move(stage));
+    }
+
+    /****************************************************
+     *                                                  *
+     *               Move to Pick                       *
+     *                                                  *
+     ***************************************************/
+    {  // Move-to pre-grasp
+      auto stage = std::make_unique<stages::Connect>(
+          "move to pick", stages::Connect::GroupPlannerVector{ { parameters.arm_group_name_, sampling_planner } });
+      stage->setTimeout(5.0);
+      stage->properties().configureInitFrom(Stage::PARENT);
+      t.add(std::move(stage));
+    }
+
+    /****************************************************
+     *                                                  *
+     *               Pick Object                        *
+     *                                                  *
+     ***************************************************/
+    Stage* attach_object_stage = nullptr;  // Forward attach_object_stage to place pose generator
+    {
+      auto stage = std::make_unique<stages::Pick>("Pick object", parameters.grasp_provider_plugin_name_);
+      stage->properties().property("eef_group").configureInitFrom(Stage::PARENT, "hand");
+      stage->properties().property("eef_parent_group").configureInitFrom(Stage::PARENT, "group");
+      stage->setObject(parameters.object_name_);
+      stage->setEndEffector(parameters.eef_name_);
+      stage->setEndEffectorOpenClose(parameters.hand_open_pose_, parameters.hand_close_pose_);
+      stage->setSupportSurfaces(parameters.support_surfaces_);
+      stage->setIKFrame(parameters.grasp_frame_transform_, parameters.hand_frame_);
+      stage->GraspProviderPlugin()->properties().set("angle_delta", M_PI / 12);  // Set plugin-specific properties
+      stage->setMonitoredStage(current_state);
+      stage->setApproachMotion(parameters.approach_object_direction_,parameters.approach_object_min_dist_, parameters.approach_object_max_dist_);
+      stage->setLiftMotion(parameters.lift_object_direction_, parameters.lift_object_min_dist_, parameters.lift_object_max_dist_);
+      attach_object_stage = stage->attachStage();
+      t.add(std::move(stage));
+    }
   }
 
-  /******************************************************
-   *                                                    *
-   *          Move to Place                             *
-   *                                                    *
-   *****************************************************/
-  // {
-  //   auto stage = std::make_unique<stages::Connect>(
-  //       "move to place", stages::Connect::GroupPlannerVector{ { parameters.arm_group_name_, sampling_planner } });
-  //   stage->setTimeout(5.0);
-  //   stage->properties().configureInitFrom(Stage::PARENT);
-  //   t.add(std::move(stage));
-  // }
+  if (parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PLACE_ONLY || 
+      parameters.task_type_ == moveit_task_constructor_msgs::PlanPickPlaceGoal::PICK_AND_PLACE)
+  {
 
-  // /******************************************************
-  //  *                                                    *
-  //  *          Place Object                              *
-  //  *                                                    *
-  //  *****************************************************/
+    /******************************************************
+     *                                                    *
+     *          Move to Place                             *
+     *                                                    *
+     *****************************************************/
+    {
+      auto stage = std::make_unique<stages::Connect>(
+          "move to place", stages::Connect::GroupPlannerVector{ { parameters.arm_group_name_, sampling_planner } });
+      stage->setTimeout(5.0);
+      stage->properties().configureInitFrom(Stage::PARENT);
+      t.add(std::move(stage));
+    }
 
+    /******************************************************
+     *                                                    *
+     *          Place Object                              *
+     *                                                    *
+     *****************************************************/
+    //   Stage* detach_object_stage = nullptr;  // Forward detach_object_stage to place pose generator
+    // {
+    //   auto stage = std::make_unique<stages::Place>("Place object", parameters.place_provider_plugin_name_);
+    //   stage->properties().property("eef_group").configureInitFrom(Stage::PARENT, "hand");
+    //   stage->properties().property("eef_parent_group").configureInitFrom(Stage::PARENT, "group");
+    //   stage->setObject(parameters.object_name_);
+    //   stage->setEndEffector(parameters.eef_name_);
+    //   stage->setEndEffectorOpenClose(parameters.hand_open_pose_, parameters.hand_close_pose_);
+    //   stage->setSupportSurfaces(parameters.support_surfaces_);
+    //   stage->setIKFrame(parameters.grasp_frame_transform_, parameters.hand_frame_);
+    //   // stage->PlaceProviderPlugin()->properties().set("angle_delta", M_PI / 12);  // Set plugin-specific properties
+    //   stage->setMonitoredStage(current_state);
+    //   stage->setApproachMotion(parameters.approach_object_direction_,parameters.approach_object_min_dist_, parameters.approach_object_max_dist_);
+    //   stage->setLiftMotion(parameters.lift_object_direction_, parameters.lift_object_min_dist_, parameters.lift_object_max_dist_);
+    //   detach_object_stage = stage->attachStage();
+    //   t.add(std::move(stage));
+    // }
 
-  // /******************************************************
-  //  *                                                    *
-  //  *          Move to Home                              *
-  //  *                                                    *
-  //  *****************************************************/
-  // {
-  //   auto stage = std::make_unique<stages::MoveTo>("move home", sampling_planner);
-  //   stage->properties().configureInitFrom(Stage::PARENT, { "group" });
-  //   stage->setGoal(parameters.arm_home_pose_);
-  //   stage->restrictDirection(stages::MoveTo::FORWARD);
-  //   t.add(std::move(stage));
-  // }
+    /******************************************************
+     *                                                    *
+     *          Move to Home                              *
+     *                                                    *
+     *****************************************************/
+    // {
+    //   auto stage = std::make_unique<stages::MoveTo>("move home", sampling_planner);
+    //   stage->properties().configureInitFrom(Stage::PARENT, { "group" });
+    //   stage->setGoal(parameters.arm_home_pose_);
+    //   stage->restrictDirection(stages::MoveTo::FORWARD);
+    //   t.add(std::move(stage));
+    // }
+  }
 }
 
 bool PickPlaceTask::plan() {

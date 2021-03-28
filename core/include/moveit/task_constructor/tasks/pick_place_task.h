@@ -58,6 +58,7 @@
 #include <moveit/task_constructor/solvers/cartesian_path.h>
 #include <moveit/task_constructor/solvers/pipeline_planner.h>
 #include <moveit_task_constructor_msgs/ExecuteTaskSolutionAction.h>
+#include <moveit_task_constructor_msgs/PlanPickPlaceAction.h>
 
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
@@ -77,6 +78,8 @@ class PickPlaceTask
 public:
   struct Parameters
   {
+    short task_type_;
+
     // planning group properties
     std::string arm_group_name_;
     std::string eef_name_;
