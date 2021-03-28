@@ -78,6 +78,8 @@ void PlanPickPlaceCapability::goalCallback(
   parameters.lift_object_min_dist_ = goal->grasp.post_grasp_retreat.min_distance;
   parameters.lift_object_max_dist_ = goal->grasp.post_grasp_retreat.desired_distance;
 
+  parameters.place_provider_plugin_name_ = goal->place_provider_plugin_name;
+
   // Initialize task
   pick_place_task_->init(parameters);
 

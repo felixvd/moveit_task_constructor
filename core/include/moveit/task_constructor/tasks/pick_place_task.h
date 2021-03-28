@@ -102,6 +102,7 @@ public:
 
     // Plugins
     std::string grasp_provider_plugin_name_;
+    std::string place_provider_plugin_name_;
 
     // Pick metrics
     Eigen::Isometry3d grasp_frame_transform_;
