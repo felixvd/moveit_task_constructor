@@ -53,7 +53,7 @@
 #include <moveit/task_constructor/stages/modify_planning_scene.h>
 #include <moveit/task_constructor/stages/move_relative.h>
 #include <moveit/task_constructor/stages/move_to.h>
-#include <moveit/task_constructor/stages/pick.h>
+#include <moveit/task_constructor/stages/pick_place.h>
 #include <moveit/task_constructor/stages/predicate_filter.h>
 #include <moveit/task_constructor/solvers/cartesian_path.h>
 #include <moveit/task_constructor/solvers/pipeline_planner.h>
