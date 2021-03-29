@@ -100,6 +100,8 @@ public:
     std::string hand_close_pose_;
     // std::string arm_home_pose_;
 
+    moveit_msgs::Grasp grasp;
+
     // Plugins
     std::string grasp_provider_plugin_name_;
     std::string place_provider_plugin_name_;

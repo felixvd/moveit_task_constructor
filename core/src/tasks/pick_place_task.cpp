@@ -45,6 +45,15 @@ constexpr char LOGNAME[] = "pick_place_task";
 PickPlaceTask::PickPlaceTask(const std::string& task_name)
   : task_name_(task_name) {}
 
+bool grasp_pose_is_defined(const moveit_msgs::Grasp& msg) 
+{
+  // Returns true if a grasp pose has been set in the grasp message
+  // if (msg.grasp_pose.pose.orientation.x != 0 || msg.grasp_pose.pose.orientation.y != 0 || 
+  //     msg.grasp_pose.pose.orientation.z != 0 || msg.grasp_pose.pose.orientation.w != 0)
+  if (msg.grasp_pose.header.frame_id != "")
+    return true;
+  return false;
+}
 void PickPlaceTask::init(const Parameters& parameters)
 {
   ROS_INFO_NAMED(LOGNAME, "Initializing task pipeline");
@@ -147,7 +156,17 @@ void PickPlaceTask::init(const Parameters& parameters)
      ***************************************************/
     Stage* attach_object_stage = nullptr;  // Forward attach_object_stage to place pose generator
     {
-      auto stage = std::make_unique<stages::Pick>("Pick object", parameters.grasp_provider_plugin_name_);
+      const bool grasp_pose_defined = grasp_pose_is_defined(parameters.grasp);
+      std::string grasp_provider_plugin;
+      if (grasp_pose_defined)
+      {
+        grasp_provider_plugin = "moveit_task_constructor/GraspProviderFixedPose";
+      }
+      else
+      {
+        grasp_provider_plugin = parameters.grasp_provider_plugin_name_;
+      }
+      auto stage = std::make_unique<stages::Pick>("Pick object", grasp_provider_plugin);
       stage->properties().property("eef_group").configureInitFrom(Stage::PARENT, "hand");
       stage->properties().property("eef_parent_group").configureInitFrom(Stage::PARENT, "group");
       stage->setObject(parameters.object_name_);
@@ -155,7 +174,14 @@ void PickPlaceTask::init(const Parameters& parameters)
       stage->setEndEffectorOpenClose(parameters.hand_open_pose_, parameters.hand_close_pose_);
       stage->setSupportSurfaces(parameters.support_surfaces_);
       stage->setIKFrame(parameters.grasp_frame_transform_, parameters.hand_frame_);
-      stage->GraspProviderPlugin()->properties().set("angle_delta", M_PI / 12);  // Set plugin-specific properties
+      if (grasp_pose_defined)
+      {
+        stage->GraspProviderPlugin()->properties().set("pose", parameters.grasp.grasp_pose);
+      }
+      else // TODO: Go through properties systematically
+      {
+        stage->GraspProviderPlugin()->properties().set("angle_delta", M_PI / 12);  // Set plugin-specific properties
+      }
       stage->setMonitoredStage(current_state);
       stage->setApproachMotion(parameters.approach_object_direction_,parameters.approach_object_min_dist_, parameters.approach_object_max_dist_);
       stage->setLiftMotion(parameters.lift_object_direction_, parameters.lift_object_min_dist_, parameters.lift_object_max_dist_);
