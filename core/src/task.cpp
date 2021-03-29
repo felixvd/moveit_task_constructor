@@ -327,6 +327,11 @@ moveit_msgs::MoveItErrorCodes Task::execute(const SolutionBase& s) {
 	return ac.getResult()->error_code;
 }
 
+// bool Task::getSolution() {
+// 	s.fillMessage(goal.solution, pimpl()->introspection_.get());
+// 	s.start()->scene()->getPlanningSceneMsg(goal.solution.start_scene);
+// }
+
 void Task::publishAllSolutions(const bool& wait) {
 	enableIntrospection(true);
 	pimpl()->introspection_->publishAllSolutions(wait);

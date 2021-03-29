@@ -98,6 +98,41 @@ moveit_msgs::CollisionObject createObject() {
 	return object;
 }
 
+void fillParameters(moveit_task_constructor_msgs::PlanPickPlaceGoal& goal) {
+	ROS_INFO_NAMED(LOGNAME, "Filling task parameters");
+	ros::NodeHandle pnh("~");
+	// Planning group properties
+	size_t errors = 0;
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "arm_group_name", goal.arm_group_name);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "hand_group_name", goal.hand_group_name);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "eef_name", goal.eef_name);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "hand_frame", goal.hand_frame);
+	// errors += !rosparam_shortcuts::get(LOGNAME, pnh, "world_frame", goal.world_frame);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "grasp_frame_transform", goal.grasp_frame_transform);
+
+	// Predefined pose targets
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "hand_open_pose", goal.hand_open_pose);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "hand_close_pose", goal.hand_close_pose);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "arm_home_pose", goal.arm_home_pose);
+
+	// Target object
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "object_name", goal.object_id);
+	// errors += !rosparam_shortcuts::get(LOGNAME, pnh, "object_reference_frame", goal.object_reference_frame);
+	std::string surface_link;
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "surface_link", surface_link);
+	goal.support_surfaces = { surface_link };
+
+	// Pick/Place metrics
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "approach_object_min_dist", goal.grasp.pre_grasp_approach.min_distance);
+	// errors += !rosparam_shortcuts::get(LOGNAME, pnh, "approach_object_max_dist", goal.grasp.pre_grasp_approach.max_dist);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "lift_object_min_dist", goal.place_location.post_place_retreat.min_distance);
+	// errors += !rosparam_shortcuts::get(LOGNAME, pnh, "lift_object_max_dist", goal.place_location.post_place_retreat.lift_object_max_dist);
+	// errors += !rosparam_shortcuts::get(LOGNAME, pnh, "place_surface_offset", goal.place_surface_offset);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "world_frame", goal.place_location.header.frame_id);
+	errors += !rosparam_shortcuts::get(LOGNAME, pnh, "place_pose", goal.place_location.pose.place_pose);
+	rosparam_shortcuts::shutdownIfError(LOGNAME, errors);
+}
+
 int main(int argc, char** argv) {
 	ROS_INFO_NAMED(LOGNAME, "Init node");
 	ros::init(argc, argv, "mtc_tutorial");
@@ -114,6 +149,10 @@ int main(int argc, char** argv) {
 	spawnObject(psi, createObject());
 
 	// Construct and run pick/place task
+	actionlib::SimpleActionClient<moveit_task_constructor_msgs::PlanPickPlaceAction> plan_client("plan_pick_place", true);
+	actionlib::SimpleActionClient<moveit_task_constructor_msgs::ExecuteTaskSolutionAction> execute_client("execute_task_solution", true);
+
+
 	moveit_task_constructor_demo::PickPlaceTask pick_place_task("pick_place_task", nh);
 	pick_place_task.loadParameters();
 	pick_place_task.init();

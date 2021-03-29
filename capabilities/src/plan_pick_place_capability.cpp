@@ -42,6 +42,8 @@
 
 namespace move_group {
 
+constexpr char LOGNAME[] = "pick_place_task_capability";
+
 PlanPickPlaceCapability::PlanPickPlaceCapability() : MoveGroupCapability("PlanPickPlace") {}
 
 void PlanPickPlaceCapability::initialize() {
@@ -81,7 +83,11 @@ void PlanPickPlaceCapability::goalCallback(
   parameters.place_provider_plugin_name_ = goal->place_provider_plugin_name;
 
   // Initialize task
+  ROS_INFO_NAMED(LOGNAME, "Remaking task (pointer)");
+  pick_place_task_ = std::make_unique<PickPlaceTask>("pick_place_task");
+  ROS_INFO_NAMED(LOGNAME, "Resetting task");
   pick_place_task_->init(parameters);
+  ROS_INFO_NAMED(LOGNAME, "initted task");
 
   // Compute plan
   result.success = pick_place_task_->plan();
