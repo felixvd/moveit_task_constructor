@@ -130,16 +130,16 @@ void GraspProviderDefault::compute() {
 
 
 //  -------------------
-//  GraspProviderFixedPose
+//  GraspProviderFixedPoses
 //  -------------------
 
 
-GraspProviderFixedPose::GraspProviderFixedPose(const std::string& name) : GraspProviderBase(name){
+GraspProviderFixedPoses::GraspProviderFixedPoses(const std::string& name) : GraspProviderBase(name){
 	auto& p = properties();
-	p.declare<geometry_msgs::PoseStamped>("pose", geometry_msgs::PoseStamped(), "Grasp pose");
+	p.declare<std::vector<geometry_msgs::PoseStamped>>("poses", std::vector<geometry_msgs::PoseStamped>(), "Grasp poses");
 }
 
-void GraspProviderFixedPose::init(const core::RobotModelConstPtr& robot_model) {
+void GraspProviderFixedPoses::init(const core::RobotModelConstPtr& robot_model) {
 	InitStageException errors;
 	try {
 		GraspProviderBase::init(robot_model);
@@ -150,9 +150,12 @@ void GraspProviderFixedPose::init(const core::RobotModelConstPtr& robot_model) {
 	const auto& props = properties();
 
 	// check pose
-	geometry_msgs::PoseStamped target_pose = properties().get<geometry_msgs::PoseStamped>("pose");
-	if (props.get<geometry_msgs::PoseStamped>("pose").header.frame_id == "")
-		errors.push_back(*this, "grasp pose header must be set");
+	// std::vector<geometry_msgs::PoseStamped> target_pose = properties().get<std::vector<geometry_msgs::PoseStamped>>("poses");
+	// for (auto target_pose : target_poses)
+	// {
+	//   if (props.get<std::vector<geometry_msgs::PoseStamped>>("poses").header.frame_id == "")
+	// 	  errors.push_back(*this, "grasp pose header must be set");
+	// }
 
 	// check availability of object
 	props.get<std::string>("object");
@@ -173,28 +176,34 @@ void GraspProviderFixedPose::init(const core::RobotModelConstPtr& robot_model) {
 		throw errors;
 }
 
-void GraspProviderFixedPose::compute() {
+void GraspProviderFixedPoses::compute() {
 	if (upstream_solutions_.empty())
 		return;
 
 	planning_scene::PlanningScenePtr scene = upstream_solutions_.pop()->end()->scene()->diff();
-	geometry_msgs::PoseStamped target_pose = properties().get<geometry_msgs::PoseStamped>("pose");
-	if (target_pose.header.frame_id.empty())
-		target_pose.header.frame_id = scene->getPlanningFrame();
-	else if (!scene->knowsFrameTransform(target_pose.header.frame_id)) {
-		ROS_WARN_NAMED("GeneratePose", "Unknown frame: '%s'", target_pose.header.frame_id.c_str());
-		return;
+	std::vector<geometry_msgs::PoseStamped> target_poses = properties().get<std::vector<geometry_msgs::PoseStamped>>("poses");
+	for (auto target_pose : target_poses)
+	{
+		if (target_pose.header.frame_id.empty())
+		{
+			const auto& props = properties();
+			target_pose.header.frame_id = props.get<std::string>("object");
+		}
+		else if (!scene->knowsFrameTransform(target_pose.header.frame_id)) {
+			ROS_WARN_NAMED("GeneratePose", "Unknown frame: '%s'", target_pose.header.frame_id.c_str());
+			return;
+		}
+
+		InterfaceState state(scene);
+		state.properties().set("target_pose", target_pose);
+		
+		SubTrajectory trajectory;
+		trajectory.setCost(0.0);
+
+		rviz_marker_tools::appendFrame(trajectory.markers(), target_pose, 0.1, "grasp frame");
+
+		spawn(std::move(state), std::move(trajectory));	
 	}
-
-	InterfaceState state(scene);
-	state.properties().set("target_pose", target_pose);
-
-	SubTrajectory trajectory;
-	trajectory.setCost(0.0);
-
-	rviz_marker_tools::appendFrame(trajectory.markers(), target_pose, 0.1, "grasp frame");
-
-	spawn(std::move(state), std::move(trajectory));
 }
 
 
@@ -206,4 +215,4 @@ void GraspProviderFixedPose::compute() {
 /// register plugin
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(moveit::task_constructor::stages::GraspProviderDefault, moveit::task_constructor::stages::GraspProviderBase)
-PLUGINLIB_EXPORT_CLASS(moveit::task_constructor::stages::GraspProviderFixedPose, moveit::task_constructor::stages::GraspProviderBase)
+PLUGINLIB_EXPORT_CLASS(moveit::task_constructor::stages::GraspProviderFixedPoses, moveit::task_constructor::stages::GraspProviderBase)

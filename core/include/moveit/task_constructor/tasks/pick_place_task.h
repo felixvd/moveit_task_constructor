@@ -101,6 +101,7 @@ public:
     // std::string arm_home_pose_;
 
     moveit_msgs::Grasp grasp;
+    std::vector<geometry_msgs::PoseStamped> extra_grasp_poses;
 
     // Plugins
     std::string grasp_provider_plugin_name_;

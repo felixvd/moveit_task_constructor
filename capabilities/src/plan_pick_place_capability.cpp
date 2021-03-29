@@ -70,6 +70,7 @@ void PlanPickPlaceCapability::goalCallback(
   parameters.object_name_ = goal->object_id;
   parameters.support_surfaces_ = goal->support_surfaces;
   parameters.grasp = goal->grasp;
+  parameters.extra_grasp_poses = goal->extra_grasp_poses;
   parameters.grasp_provider_plugin_name_ = goal->grasp_provider_plugin_name;
   tf::poseMsgToEigen(goal->grasp_frame_transform, parameters.grasp_frame_transform_);
   parameters.hand_open_pose_ = "open";

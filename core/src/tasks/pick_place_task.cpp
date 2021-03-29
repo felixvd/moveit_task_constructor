@@ -45,15 +45,20 @@ constexpr char LOGNAME[] = "pick_place_task";
 PickPlaceTask::PickPlaceTask(const std::string& task_name)
   : task_name_(task_name) {}
 
-bool grasp_pose_is_defined(const moveit_msgs::Grasp& msg) 
+std::vector<geometry_msgs::PoseStamped> merge_grasp_poses(const moveit_msgs::Grasp& grasp_msg, const std::vector<geometry_msgs::PoseStamped>& in_poses) 
 {
-  // Returns true if a grasp pose has been set in the grasp message
-  // if (msg.grasp_pose.pose.orientation.x != 0 || msg.grasp_pose.pose.orientation.y != 0 || 
-  //     msg.grasp_pose.pose.orientation.z != 0 || msg.grasp_pose.pose.orientation.w != 0)
-  if (msg.grasp_pose.header.frame_id != "")
-    return true;
-  return false;
+  std::vector<geometry_msgs::PoseStamped> poses(in_poses);
+  // Add grasp pose from grasp message  if it has been set
+  if (grasp_msg.grasp_pose.pose.orientation.x != 0 || grasp_msg.grasp_pose.pose.orientation.y != 0 || 
+      grasp_msg.grasp_pose.pose.orientation.z != 0 || grasp_msg.grasp_pose.pose.orientation.w != 0 ||
+      grasp_msg.grasp_pose.pose.position.x != 0 || grasp_msg.grasp_pose.pose.position.y != 0 || 
+      grasp_msg.grasp_pose.pose.position.z != 0)
+  {
+    poses.emplace(poses.begin(), grasp_msg.grasp_pose);
+  }
+  return poses;
 }
+
 void PickPlaceTask::init(const Parameters& parameters)
 {
   ROS_INFO_NAMED(LOGNAME, "Initializing task pipeline");
@@ -156,11 +161,11 @@ void PickPlaceTask::init(const Parameters& parameters)
      ***************************************************/
     Stage* attach_object_stage = nullptr;  // Forward attach_object_stage to place pose generator
     {
-      const bool grasp_pose_defined = grasp_pose_is_defined(parameters.grasp);
+      const std::vector<geometry_msgs::PoseStamped> grasp_poses = merge_grasp_poses(parameters.grasp, parameters.extra_grasp_poses);
       std::string grasp_provider_plugin;
-      if (grasp_pose_defined)
+      if (!grasp_poses.empty())
       {
-        grasp_provider_plugin = "moveit_task_constructor/GraspProviderFixedPose";
+        grasp_provider_plugin = "moveit_task_constructor/GraspProviderFixedPoses";
       }
       else
       {
@@ -174,9 +179,9 @@ void PickPlaceTask::init(const Parameters& parameters)
       stage->setEndEffectorOpenClose(parameters.hand_open_pose_, parameters.hand_close_pose_);
       stage->setSupportSurfaces(parameters.support_surfaces_);
       stage->setIKFrame(parameters.grasp_frame_transform_, parameters.hand_frame_);
-      if (grasp_pose_defined)
+      if (!grasp_poses.empty())
       {
-        stage->GraspProviderPlugin()->properties().set("pose", parameters.grasp.grasp_pose);
+        stage->GraspProviderPlugin()->properties().set("poses", grasp_poses);
       }
       else // TODO: Go through properties systematically
       {

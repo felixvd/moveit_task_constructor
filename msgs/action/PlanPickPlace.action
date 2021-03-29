@@ -17,10 +17,11 @@ string object_id
 string[] support_surfaces
 
 # Picking
-# TODO: Describe behavior 
+# Either provide grasp poses or the name of a grasp_provider_plugin which will generate grasps
+moveit_msgs/Grasp grasp                        # If the grasp pose is set, it overrides the grasp provider plugin 
+geometry_msgs/PoseStamped[] extra_grasp_poses  # More grasp poses to check (approach and lift direction from the grasp are maintained
+geometry_msgs/Pose grasp_frame_transform       # Offsets the eef frame (only set this if necessary) (should we delete it?~felixvd)
 string grasp_provider_plugin_name
-moveit_msgs/Grasp grasp
-geometry_msgs/Pose grasp_frame_transform
 
 # Placing
 string place_provider_plugin_name
