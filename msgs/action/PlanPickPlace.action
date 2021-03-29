@@ -1,4 +1,4 @@
-# By default, the task type is 
+# By default, the task type is PICK_ONLY
 int8 PICK_ONLY=0
 int8 PLACE_ONLY=1
 int8 PICK_AND_PLACE=2
