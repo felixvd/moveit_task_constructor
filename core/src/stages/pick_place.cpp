@@ -72,9 +72,12 @@ PickPlaceBase::PickPlaceBase(const std::string& name, const std::string& provide
 			provider_stage_plugin->properties().property("pregrasp").configureInitFrom(Stage::PARENT, "eef_group_open_pose");
 			provider_stage_plugin->properties().property("grasp").configureInitFrom(Stage::PARENT, "eef_group_close_pose");
 			provider_stage_plugin->properties().set("marker_ns", "grasp_pose");
-			grasp_stage_ = provider_stage_plugin.get();
-
+			// grasp_stage_ = provider_stage_plugin.get(); // This line crashes before the first plan
+			
 			wrapper = std::make_unique<stages::ComputeIK>("grasp pose IK", std::move(provider_stage_plugin));
+			ROS_WARN_STREAM("Dynamic casting");
+			grasp_stage_ = dynamic_cast<GraspProviderBase*>(wrapper->wrapped());  // This line crashes at the second plan
+			ROS_WARN_STREAM("Dynamic casting done");
 		}
 		else {
 			std::unique_ptr<PlaceProviderBase> provider_stage_plugin(place_provider_class_loader_.createUnmanagedInstance(provider_stage_plugin_name_));

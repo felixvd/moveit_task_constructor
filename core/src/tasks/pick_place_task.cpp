@@ -43,7 +43,12 @@ namespace tasks {
 
 constexpr char LOGNAME[] = "pick_place_task";
 PickPlaceTask::PickPlaceTask(const std::string& task_name)
-  : task_name_(task_name) {}
+  : task_name_(task_name) {
+    task_.reset();
+    task_.reset(new moveit::task_constructor::Task(task_name_));
+    Task& t = *task_;
+    t.loadRobotModel();
+}
 
 std::vector<geometry_msgs::PoseStamped> merge_grasp_poses(const moveit_msgs::Grasp& grasp_msg, const std::vector<geometry_msgs::PoseStamped>& in_poses) 
 {
@@ -64,10 +69,19 @@ void PickPlaceTask::init(const Parameters& parameters)
   ROS_INFO_NAMED(LOGNAME, "Initializing task pipeline");
   // Reset ROS introspection before constructing the new object
   // TODO(henningkayser): verify this is a bug, fix if possible
-  task_.reset();
-  task_.reset(new moveit::task_constructor::Task(task_name_));
+  std::cout << "pickplacetask Debug 1" << std::endl;
+  // task_.reset();
+  // task_.reset(new moveit::task_constructor::Task(task_name_));
+  // t.loadRobotModel();
+  std::cout << "pickplacetask Debug 2" << std::endl;
+  // task_.clear();
+  std::cout << "pickplacetask Debug 2" << std::endl;
+  // task_.clear();
+  std::cout << "pickplacetask Debug 3" << std::endl;
   Task& t = *task_;
-  t.loadRobotModel();
+  std::cout << "pickplacetask Debug 4" << std::endl;
+  t.clear();
+  std::cout << "pickplacetask Debug 5" << std::endl;
 
   // Sampling planner
   // TODO(henningkayser): Setup and parameterize alternative planners
