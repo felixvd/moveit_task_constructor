@@ -180,7 +180,7 @@ void PickPlaceTask::init(const Parameters& parameters)
       {
         grasp_provider_plugin = parameters.grasp_provider_plugin_name_;
       }
-      auto stage = std::make_unique<stages::Pick>("Pick object", grasp_provider_plugin);
+      auto stage = std::make_unique<stages::Pick>("Pick object", parameters.grasp_provider_plugin_name_, grasp_provider_class_loader_.get());
       stage->properties().property("eef_group").configureInitFrom(Stage::PARENT, "hand");
       stage->properties().property("eef_parent_group").configureInitFrom(Stage::PARENT, "group");
       stage->setObject(parameters.object_name_);
