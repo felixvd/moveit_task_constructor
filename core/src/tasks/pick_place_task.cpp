@@ -44,11 +44,15 @@ namespace tasks {
 constexpr char LOGNAME[] = "pick_place_task";
 PickPlaceTask::PickPlaceTask(const std::string& task_name)
   : task_name_(task_name) {
+    grasp_provider_class_loader_ = std::make_unique<GraspProviderPluginLoader>("moveit_task_constructor_core", "moveit::task_constructor::stages::GraspProviderBase");
+    place_provider_class_loader_ = std::make_unique<PlaceProviderPluginLoader>("moveit_task_constructor_core", "moveit::task_constructor::stages::PlaceProviderBase");
     task_.reset();
     task_.reset(new moveit::task_constructor::Task(task_name_));
-    Task& t = *task_;
-    t.loadRobotModel();
-}
+    task_->reset();
+    task_->loadRobotModel();
+    current_state_stage_ = nullptr;
+    attach_object_stage_ = nullptr;
+  }
 
 std::vector<geometry_msgs::PoseStamped> merge_grasp_poses(const moveit_msgs::Grasp& grasp_msg, const std::vector<geometry_msgs::PoseStamped>& in_poses) 
 {
@@ -69,19 +73,11 @@ void PickPlaceTask::init(const Parameters& parameters)
   ROS_INFO_NAMED(LOGNAME, "Initializing task pipeline");
   // Reset ROS introspection before constructing the new object
   // TODO(henningkayser): verify this is a bug, fix if possible
-  std::cout << "pickplacetask Debug 1" << std::endl;
-  // task_.reset();
-  // task_.reset(new moveit::task_constructor::Task(task_name_));
-  // t.loadRobotModel();
-  std::cout << "pickplacetask Debug 2" << std::endl;
-  // task_.clear();
-  std::cout << "pickplacetask Debug 2" << std::endl;
-  // task_.clear();
-  std::cout << "pickplacetask Debug 3" << std::endl;
+  if(task_){
+    task_->clear();
+    task_->loadRobotModel();
+  }
   Task& t = *task_;
-  std::cout << "pickplacetask Debug 4" << std::endl;
-  t.clear();
-  std::cout << "pickplacetask Debug 5" << std::endl;
 
   // Sampling planner
   // TODO(henningkayser): Setup and parameterize alternative planners
@@ -105,7 +101,6 @@ void PickPlaceTask::init(const Parameters& parameters)
    *               Current State                      *
    *                                                  *
    ***************************************************/
-  Stage* current_state = nullptr;  // Forward current_state on to grasp pose generator
   {
     auto _current_state = std::make_unique<stages::CurrentState>("current state");
     _current_state->setTimeout(10);
@@ -136,7 +131,7 @@ void PickPlaceTask::init(const Parameters& parameters)
       return true;
     });
 
-    current_state = applicability_filter.get();
+    current_state_stage_ = applicability_filter.get();
     t.add(std::move(applicability_filter));
   }
 
