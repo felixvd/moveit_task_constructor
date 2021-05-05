@@ -1,4 +1,4 @@
-# By default, the task type is 
+# By default, the task type is PICK_ONLY
 byte PICK_ONLY=0
 byte PLACE_ONLY=1
 byte PICK_AND_PLACE=2
@@ -9,17 +9,18 @@ string arm_group_name
 string hand_group_name
 
 # Robot model and links
-string eef_name
-string hand_frame
+string eef_name                 # The name of the end effector group
+string hand_frame               # Will be used as the endEffectorFrame
 
 # Object and surfaces
+# During the pick and place operation, the object is allowed to collide with the support_surfaces
 string object_id
 string[] support_surfaces
 
 # Picking
 string grasp_provider_plugin_name
 moveit_msgs/Grasp[] grasps
-geometry_msgs/Pose grasp_frame_transform
+geometry_msgs/Pose grasp_frame_transform  # What's this?
 
 # Placing
 string place_provider_plugin_name
